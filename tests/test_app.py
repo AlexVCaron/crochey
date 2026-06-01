@@ -53,7 +53,7 @@ class AppTestCase(unittest.TestCase):
                 "image": (self._png_bytes(), "sample.png"),
                 "subsample": "4",
                 "save_output": "true",
-                "output_name": "patterns/piece-1.png",
+                "output_name": "piece-1.png",
             },
             content_type="multipart/form-data",
         )

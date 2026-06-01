@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from io import BytesIO
 from pathlib import Path
 
@@ -29,13 +30,12 @@ def _resolve_output_path(output_name: str | None) -> Path:
     output_base = Path(app.config["OUTPUT_BASE_DIR"]).resolve()
     output_base.mkdir(parents=True, exist_ok=True)
 
-    cleaned_name = (output_name or "processed.png").strip().lstrip("/")
-    candidate = (output_base / cleaned_name).resolve()
-    if output_base not in candidate.parents and candidate != output_base:
-        raise ValueError("output path must stay inside configured output base directory")
+    requested_name = (output_name or "processed.png").strip()
+    file_name = Path(requested_name).name
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", file_name):
+        raise ValueError("output name must use only letters, numbers, dots, underscores, and dashes")
 
-    candidate.parent.mkdir(parents=True, exist_ok=True)
-    return candidate
+    return output_base / file_name
 
 
 @app.get("/")
@@ -81,8 +81,8 @@ def process_image():
         try:
             output_path = _resolve_output_path(request.form.get("output_name"))
             processed.save(output_path)
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+        except ValueError:
+            return jsonify({"error": "invalid output name"}), 400
 
     return jsonify(
         {

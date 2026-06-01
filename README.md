@@ -15,7 +15,7 @@ Open `http://127.0.0.1:8000`.
 - Web UI to upload an input image and keep it loaded in browser memory for preview.
 - Backend options for image subsampling (primary), optional oversampling, and resampling mode.
 - Endpoint that returns before/after samples.
-- Optional output save path (relative to backend output base directory).
+- Optional output file name (saved in backend output base directory).
 - Static web server provided by Flask.
 
 ## Tests
