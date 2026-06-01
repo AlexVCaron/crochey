@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crochey</title>
+    <style>
+      body { font-family: sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+      form { display: grid; gap: 0.75rem; }
+      .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+      img { max-width: 100%; border: 1px solid #ddd; }
+      label { display: grid; gap: 0.25rem; }
+      .muted { color: #666; font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Crochey pattern preview</h1>
+    <p class="muted">Upload an image, tune backend options, and preview before/after crochet-space sampling.</p>
+
+    <form id="process-form">
+      <label>
+        Input image
+        <input id="image" name="image" type="file" accept="image/*" required />
+      </label>
+
+      <div class="row">
+        <label>
+          Subsample factor
+          <input name="subsample" type="number" min="1" value="4" />
+        </label>
+        <label>
+          Resample method
+          <select name="resample">
+            <option value="nearest">Nearest</option>
+            <option value="bilinear">Bilinear</option>
+            <option value="bicubic">Bicubic</option>
+            <option value="lanczos">Lanczos</option>
+          </select>
+        </label>
+      </div>
+
+      <label>
+        <input id="allow_oversampling" name="allow_oversampling" type="checkbox" value="true" />
+        Allow oversampling after subsampling
+      </label>
+
+      <div class="row">
+        <label>
+          Target width (optional)
+          <input name="target_width" type="number" min="1" />
+        </label>
+        <label>
+          Target height (optional)
+          <input name="target_height" type="number" min="1" />
+        </label>
+      </div>
+
+      <label>
+        <input id="save_output" name="save_output" type="checkbox" value="true" />
+        Save output on backend
+      </label>
+      <label>
+        Output relative path (inside backend output base)
+        <input name="output_name" type="text" placeholder="patterns/piece-1.png" />
+      </label>
+
+      <button type="submit">Process image</button>
+    </form>
+
+    <p id="status" class="muted"></p>
+    <p id="saved-output" class="muted"></p>
+
+    <div class="row">
+      <div>
+        <h2>Before</h2>
+        <img id="before-preview" alt="Original preview" />
+        <p id="before-size" class="muted"></p>
+      </div>
+      <div>
+        <h2>After</h2>
+        <img id="after-preview" alt="Processed preview" />
+        <p id="after-size" class="muted"></p>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("process-form");
+      const status = document.getElementById("status");
+      const savedOutput = document.getElementById("saved-output");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        status.textContent = "Processing...";
+        savedOutput.textContent = "";
+
+        const data = new FormData(form);
+        const response = await fetch("/api/process", {
+          method: "POST",
+          body: data,
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          status.textContent = payload.error || "Request failed";
+          return;
+        }
+
+        document.getElementById("before-preview").src = payload.before.preview;
+        document.getElementById("after-preview").src = payload.after.preview;
+        document.getElementById("before-size").textContent = `${payload.before.width}x${payload.before.height}`;
+        document.getElementById("after-size").textContent = `${payload.after.width}x${payload.after.height}`;
+        savedOutput.textContent = payload.saved_output ? `Saved: ${payload.saved_output}` : "Output not saved";
+        status.textContent = "Done";
+      });
+    </script>
+  </body>
+</html>
