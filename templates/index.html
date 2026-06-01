@@ -3,115 +3,466 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crochey</title>
+    <title>Crochey – crochet pattern generator</title>
     <style>
-      body { font-family: sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
-      form { display: grid; gap: 0.75rem; }
-      .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
-      img { max-width: 100%; border: 1px solid #ddd; }
-      label { display: grid; gap: 0.25rem; }
-      .muted { color: #666; font-size: 0.9rem; }
+      *, *::before, *::after { box-sizing: border-box; }
+
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 1rem;
+        background: #f8f5f0;
+        color: #222;
+      }
+
+      h1 { margin: 0 0 0.25rem; font-size: 1.6rem; }
+      h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+      .tagline { color: #666; margin: 0 0 1.5rem; font-size: 0.9rem; }
+
+      .layout { display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start; }
+      @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+
+      /* ---- Sidebar (controls) ---- */
+      .sidebar {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 1rem;
+        display: grid;
+        gap: 1rem;
+      }
+
+      .field { display: grid; gap: 4px; }
+      .field label { font-size: 0.85rem; font-weight: 600; color: #444; }
+      .field input, .field select, .field input[type=number] {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 0.4rem 0.5rem;
+        font-size: 0.9rem;
+        width: 100%;
+      }
+      .field input[type=file] { padding: 0.25rem; }
+      .field .hint { font-size: 0.75rem; color: #888; }
+
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+      .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+
+      .section-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #888;
+        border-top: 1px solid #eee;
+        padding-top: 0.75rem;
+      }
+
+      .tab-bar { display: flex; gap: 4px; }
+      .tab-btn {
+        flex: 1;
+        padding: 0.35rem;
+        border: 1px solid #ccc;
+        background: #f4f4f4;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .tab-btn.active { background: #4a6fa5; color: #fff; border-color: #4a6fa5; }
+
+      .mode-panel { display: none; }
+      .mode-panel.active { display: grid; gap: 0.5rem; }
+
+      .checkbox-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+
+      .btn-primary {
+        background: #4a6fa5;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.6rem 1rem;
+        font-size: 1rem;
+        cursor: pointer;
+        font-weight: 600;
+        width: 100%;
+      }
+      .btn-primary:hover { background: #3a5a8f; }
+      .btn-primary:disabled { background: #9ab0cc; cursor: not-allowed; }
+
+      .status-bar {
+        font-size: 0.85rem;
+        color: #666;
+        min-height: 1.2em;
+        text-align: center;
+      }
+      .status-bar.error { color: #c00; font-weight: 600; }
+
+      /* ---- Results area ---- */
+      .results { display: grid; gap: 1.5rem; }
+
+      .card {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .card-header {
+        padding: 0.5rem 1rem;
+        background: #f0ece8;
+        border-bottom: 1px solid #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .card-header h2 { margin: 0; }
+      .card-meta { font-size: 0.8rem; color: #666; }
+      .card-body { padding: 0.75rem 1rem; }
+
+      .preview-img {
+        max-width: 100%;
+        display: block;
+        image-rendering: pixelated;
+      }
+
+      /* Pattern grid is scrollable if wide */
+      .pattern-scroll { overflow-x: auto; }
+      .pattern-scroll img { image-rendering: pixelated; max-width: none; }
+
+      /* Colour palette */
+      .palette { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.78rem;
+        background: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+      }
+      .swatch-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        border: 1px solid rgba(0,0,0,0.15);
+        flex-shrink: 0;
+      }
+      .swatch-info { line-height: 1.4; }
+      .swatch-hex { font-family: monospace; font-weight: 600; }
+      .swatch-count { color: #888; }
+
+      /* Download button */
+      .btn-download {
+        display: inline-block;
+        background: #2d7a4f;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.82rem;
+        text-decoration: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn-download:hover { background: #1e5c3b; }
+
+      /* Before/after layout */
+      .before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      @media (max-width: 600px) { .before-after { grid-template-columns: 1fr; } }
+      .panel-label { font-size: 0.75rem; font-weight: 700; color: #888; text-transform: uppercase; margin-bottom: 0.25rem; }
     </style>
   </head>
   <body>
-    <h1>Crochey pattern preview</h1>
-    <p class="muted">Upload an image, tune backend options, and preview before/after crochet-space sampling.</p>
+    <h1>🧶 Crochey</h1>
+    <p class="tagline">Convert any image into a crochet stitch pattern</p>
 
-    <form id="process-form">
-      <label>
-        Input image
-        <input id="image" name="image" type="file" accept="image/*" required />
-      </label>
+    <div class="layout">
+      <!-- ======== Sidebar ======== -->
+      <aside class="sidebar">
+        <!-- Image upload -->
+        <div class="field">
+          <label for="image-input">Input image</label>
+          <input id="image-input" name="image" type="file" accept="image/*" required />
+          <span class="hint">Any image format supported by the server (JPEG, PNG, WebP, GIF, TIFF, …)</span>
+        </div>
 
-      <div class="row">
-        <label>
-          Subsample factor
-          <input name="subsample" type="number" min="1" value="4" />
-        </label>
-        <label>
-          Resample method
-          <select name="resample">
-            <option value="nearest">Nearest</option>
-            <option value="bilinear">Bilinear</option>
-            <option value="bicubic">Bicubic</option>
-            <option value="lanczos">Lanczos</option>
-          </select>
-        </label>
-      </div>
+        <div class="section-title">Crochet space sizing</div>
 
-      <label>
-        <input id="allow_oversampling" name="allow_oversampling" type="checkbox" value="true" />
-        Allow oversampling after subsampling
-      </label>
+        <!-- Mode toggle -->
+        <div class="tab-bar">
+          <button type="button" class="tab-btn active" data-mode="direct">Direct counts</button>
+          <button type="button" class="tab-btn" data-mode="gauge">Gauge-based</button>
+        </div>
+        <input type="hidden" id="mode-input" name="mode" value="direct" />
 
-      <div class="row">
-        <label>
-          Target width (optional)
-          <input name="target_width" type="number" min="1" />
-        </label>
-        <label>
-          Target height (optional)
-          <input name="target_height" type="number" min="1" />
-        </label>
-      </div>
+        <!-- Direct mode -->
+        <div id="panel-direct" class="mode-panel active">
+          <div class="row2">
+            <div class="field">
+              <label for="stitch_count">Stitches (width)</label>
+              <input id="stitch_count" name="stitch_count" type="number" min="1" value="80" />
+            </div>
+            <div class="field">
+              <label for="row_count">Rows (height)</label>
+              <input id="row_count" name="row_count" type="number" min="1" value="60" />
+            </div>
+          </div>
+        </div>
 
-      <label>
-        <input id="save_output" name="save_output" type="checkbox" value="true" />
-        Save output on backend
-      </label>
-      <label>
-        Output file name (saved in backend output base)
-        <input name="output_name" type="text" placeholder="piece-1.png" />
-      </label>
+        <!-- Gauge mode -->
+        <div id="panel-gauge" class="mode-panel">
+          <div class="row2">
+            <div class="field">
+              <label for="stitches_per_unit">Sts / unit</label>
+              <input id="stitches_per_unit" name="stitches_per_unit" type="number" step="0.1" min="0.1" value="14" />
+            </div>
+            <div class="field">
+              <label for="rows_per_unit">Rows / unit</label>
+              <input id="rows_per_unit" name="rows_per_unit" type="number" step="0.1" min="0.1" value="12" />
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="finished_width">Width (units)</label>
+              <input id="finished_width" name="finished_width" type="number" step="0.5" min="0.1" value="20" />
+            </div>
+            <div class="field">
+              <label for="finished_height">Height (units)</label>
+              <input id="finished_height" name="finished_height" type="number" step="0.5" min="0.1" value="15" />
+            </div>
+          </div>
+          <span class="hint">Units are arbitrary (cm or inches) — keep them consistent.</span>
+        </div>
 
-      <button type="submit">Process image</button>
-    </form>
+        <div class="section-title">Image options</div>
 
-    <p id="status" class="muted"></p>
-    <p id="saved-output" class="muted"></p>
+        <div class="row2">
+          <div class="field">
+            <label for="resample">Resample method</label>
+            <select id="resample" name="resample">
+              <option value="lanczos" selected>Lanczos (best)</option>
+              <option value="bicubic">Bicubic</option>
+              <option value="bilinear">Bilinear</option>
+              <option value="nearest">Nearest</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="n_colors">Yarn colours (0 = skip)</label>
+            <input id="n_colors" name="n_colors" type="number" min="0" max="64" value="8" />
+          </div>
+        </div>
 
-    <div class="row">
-      <div>
-        <h2>Before</h2>
-        <img id="before-preview" alt="Original preview" />
-        <p id="before-size" class="muted"></p>
-      </div>
-      <div>
-        <h2>After</h2>
-        <img id="after-preview" alt="Processed preview" />
-        <p id="after-size" class="muted"></p>
-      </div>
+        <div class="section-title">Pattern grid options</div>
+
+        <div class="row3">
+          <div class="field">
+            <label for="cell_w">Cell width px</label>
+            <input id="cell_w" name="cell_w" type="number" min="4" max="80" value="24" />
+          </div>
+          <div class="field">
+            <label for="cell_h">Cell height px</label>
+            <input id="cell_h" name="cell_h" type="number" min="4" max="80" value="16" />
+          </div>
+          <div class="field">
+            <label for="guide_every">Guide every</label>
+            <input id="guide_every" name="guide_every" type="number" min="1" max="20" value="5" />
+          </div>
+        </div>
+        <span class="hint">Default ratio 24:16 = 1.5× (typical worsted-weight stitch shape).</span>
+
+        <div class="section-title">Output</div>
+
+        <div class="checkbox-row">
+          <input id="save_output" name="save_output" type="checkbox" value="true" />
+          <label for="save_output">Save pattern on server</label>
+        </div>
+        <div class="field" id="output-name-row" style="display:none">
+          <label for="output_name">File name</label>
+          <input id="output_name" name="output_name" type="text" placeholder="my-pattern.png" />
+          <span class="hint">Alphanumeric, dots, dashes, underscores only.</span>
+        </div>
+
+        <button id="submit-btn" class="btn-primary" type="button">Generate pattern</button>
+        <p id="status-bar" class="status-bar"></p>
+      </aside>
+
+      <!-- ======== Results ======== -->
+      <section class="results" id="results">
+        <!-- Before/After -->
+        <div class="card" id="card-before-after" style="display:none">
+          <div class="card-header">
+            <h2>Before / After</h2>
+            <span id="ba-meta" class="card-meta"></span>
+          </div>
+          <div class="card-body before-after">
+            <div>
+              <div class="panel-label">Original</div>
+              <img id="before-img" class="preview-img" alt="Original" />
+            </div>
+            <div>
+              <div class="panel-label">Crochet space (<span id="after-dims"></span>)</div>
+              <img id="after-img" class="preview-img" alt="Crochet space" style="image-rendering:pixelated" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Pattern grid -->
+        <div class="card" id="card-pattern" style="display:none">
+          <div class="card-header">
+            <h2>Pattern grid</h2>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+              <span id="pattern-meta" class="card-meta"></span>
+              <a id="download-btn" class="btn-download" style="display:none">⬇ Download</a>
+            </div>
+          </div>
+          <div class="card-body pattern-scroll">
+            <img id="pattern-img" class="preview-img" alt="Pattern grid" />
+          </div>
+        </div>
+
+        <!-- Colour palette -->
+        <div class="card" id="card-palette" style="display:none">
+          <div class="card-header"><h2>Yarn palette</h2></div>
+          <div class="card-body">
+            <div id="palette-list" class="palette"></div>
+          </div>
+        </div>
+      </section>
     </div>
 
     <script>
-      const form = document.getElementById("process-form");
-      const status = document.getElementById("status");
-      const savedOutput = document.getElementById("saved-output");
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        status.textContent = "Processing...";
-        savedOutput.textContent = "";
-
-        const data = new FormData(form);
-        const response = await fetch("/api/process", {
-          method: "POST",
-          body: data,
+      // ---- Mode tab logic ----
+      const tabBtns = document.querySelectorAll(".tab-btn");
+      const modeInput = document.getElementById("mode-input");
+      tabBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          tabBtns.forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          const mode = btn.dataset.mode;
+          modeInput.value = mode;
+          document.querySelectorAll(".mode-panel").forEach((p) => p.classList.remove("active"));
+          document.getElementById(`panel-${mode}`).classList.add("active");
         });
+      });
 
-        const payload = await response.json();
-        if (!response.ok) {
-          status.textContent = payload.error || "Request failed";
+      // ---- Save output toggle ----
+      document.getElementById("save_output").addEventListener("change", function () {
+        document.getElementById("output-name-row").style.display = this.checked ? "" : "none";
+      });
+
+      // ---- Instant image preview on file select ----
+      document.getElementById("image-input").addEventListener("change", function () {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById("before-img").src = e.target.result;
+          document.getElementById("card-before-after").style.display = "";
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // ---- Submit ----
+      const submitBtn = document.getElementById("submit-btn");
+      const statusBar = document.getElementById("status-bar");
+
+      submitBtn.addEventListener("click", async () => {
+        const imageFile = document.getElementById("image-input").files[0];
+        if (!imageFile) {
+          showStatus("Please select an image file.", true);
           return;
         }
 
-        document.getElementById("before-preview").src = payload.before.preview;
-        document.getElementById("after-preview").src = payload.after.preview;
-        document.getElementById("before-size").textContent = `${payload.before.width}x${payload.before.height}`;
-        document.getElementById("after-size").textContent = `${payload.after.width}x${payload.after.height}`;
-        savedOutput.textContent = payload.saved_output ? `Saved: ${payload.saved_output}` : "Output not saved";
-        status.textContent = "Done";
+        submitBtn.disabled = true;
+        showStatus("Processing…");
+
+        const form = new FormData();
+        form.append("image", imageFile);
+
+        // Collect all named inputs/selects/checkboxes
+        const fields = [
+          "mode", "stitch_count", "row_count",
+          "stitches_per_unit", "rows_per_unit", "finished_width", "finished_height",
+          "resample", "n_colors",
+          "cell_w", "cell_h", "guide_every",
+          "output_name",
+        ];
+        fields.forEach((id) => {
+          const el = document.getElementById(id) || document.querySelector(`[name="${id}"]`);
+          if (el && el.value) form.append(id, el.value);
+        });
+        const saveCheckbox = document.getElementById("save_output");
+        if (saveCheckbox.checked) form.append("save_output", "true");
+
+        try {
+          const resp = await fetch("/api/process", { method: "POST", body: form });
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            showStatus(data.error || "Server error", true);
+            return;
+          }
+
+          renderResults(data);
+          showStatus("Done ✓");
+        } catch (err) {
+          showStatus("Network error: " + err.message, true);
+        } finally {
+          submitBtn.disabled = false;
+        }
       });
+
+      function showStatus(msg, isError = false) {
+        statusBar.textContent = msg;
+        statusBar.className = "status-bar" + (isError ? " error" : "");
+      }
+
+      function renderResults(data) {
+        // Before / After
+        document.getElementById("before-img").src = data.before.preview;
+        document.getElementById("after-img").src = data.after.preview;
+        document.getElementById("after-dims").textContent =
+          `${data.after.stitch_count} sts × ${data.after.row_count} rows`;
+        document.getElementById("ba-meta").textContent =
+          `Original: ${data.before.width}×${data.before.height} px`;
+        document.getElementById("card-before-after").style.display = "";
+
+        // Pattern grid
+        document.getElementById("pattern-img").src = data.pattern.preview;
+        document.getElementById("pattern-meta").textContent =
+          `${data.pattern.width}×${data.pattern.height} px`;
+        document.getElementById("card-pattern").style.display = "";
+
+        // Download button
+        const dlBtn = document.getElementById("download-btn");
+        if (data.saved_output) {
+          dlBtn.href = `/api/download/${encodeURIComponent(data.saved_output)}`;
+          dlBtn.style.display = "";
+        } else {
+          dlBtn.style.display = "none";
+        }
+
+        // Colour palette
+        const paletteList = document.getElementById("palette-list");
+        paletteList.innerHTML = "";
+        if (data.palette && data.palette.length > 0) {
+          data.palette.forEach((entry) => {
+            const swatch = document.createElement("div");
+            swatch.className = "swatch";
+            swatch.innerHTML = `
+              <div class="swatch-dot" style="background:${entry.hex}"></div>
+              <div class="swatch-info">
+                <div class="swatch-hex">${entry.hex}</div>
+                <div class="swatch-count">${entry.count.toLocaleString()} sts (${entry.pct}%)</div>
+              </div>
+            `;
+            paletteList.appendChild(swatch);
+          });
+          document.getElementById("card-palette").style.display = "";
+        } else {
+          document.getElementById("card-palette").style.display = "none";
+        }
+      }
     </script>
   </body>
 </html>
